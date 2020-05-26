@@ -2,7 +2,6 @@ package com.example.demo.repository;
 
 import com.example.demo.domain.Account;
 import org.springframework.stereotype.Repository;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
