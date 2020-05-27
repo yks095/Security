@@ -1,11 +1,11 @@
 # Study-Spring-Security
-Spring Boot에서 제공하는 Spring Security를 공부하기 위한 저장소
+`Spring Boot`에서 제공하는 `Spring Security`를 공부하기 위한 저장소
 
 ## 학습 목표
-- Spring Security의 이해
-- Spring Security를 사용한 로그인 구현
-- Spring OAuth2를 사용한 소셜 로그인 구현
-- JWT를 사용한 로그인 구현
+- `Spring Security`의 이해
+- `Spring Security`를 사용한 로그인 구현
+- `Spring OAuth2`를 사용한 소셜 로그인 구현
+- `JWT`를 사용한 로그인 구현
 
 
 ## 개발환경
