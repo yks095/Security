@@ -1,15 +1,16 @@
 package com.kiseok.studylogin.controller;
 
-import com.kiseok.studylogin.dto.member.MemberModifyRequest;
+import com.kiseok.studylogin.dto.member.MemberModifyRequestDto;
 import com.kiseok.studylogin.dto.member.MemberRequestDto;
 import com.kiseok.studylogin.service.MemberService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.hateoas.MediaTypes;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/members")
+@RequestMapping(value = "/api/members", produces = MediaTypes.HAL_JSON_VALUE)
 public class MemberController {
 
     private final MemberService memberService;
@@ -25,7 +26,7 @@ public class MemberController {
     }
 
     @PutMapping("/{id}")
-    ResponseEntity<?> modifyMember(@PathVariable Long id, @RequestBody MemberModifyRequest request) {
+    ResponseEntity<?> modifyMember(@PathVariable Long id, @RequestBody MemberModifyRequestDto request) {
         return memberService.modifyMember(id, request);
     }
 

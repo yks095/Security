@@ -8,6 +8,7 @@ import javax.persistence.*;
 @Table @Entity
 @NoArgsConstructor @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(of = "id")
 public class Member {
 
     @Id

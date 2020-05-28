@@ -1,7 +1,7 @@
 package com.kiseok.studylogin.service;
 
 import com.kiseok.studylogin.domain.Member;
-import com.kiseok.studylogin.dto.member.MemberModifyRequest;
+import com.kiseok.studylogin.dto.member.MemberModifyRequestDto;
 import com.kiseok.studylogin.repository.MemberRepository;
 import com.kiseok.studylogin.dto.member.MemberRequestDto;
 import com.kiseok.studylogin.dto.member.MemberResponseDto;
@@ -38,7 +38,7 @@ public class MemberService {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    public ResponseEntity<?> modifyMember(Long id, MemberModifyRequest request) {
+    public ResponseEntity<?> modifyMember(Long id, MemberModifyRequestDto request) {
         if(!memberRepository.findById(id).isPresent())  {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }

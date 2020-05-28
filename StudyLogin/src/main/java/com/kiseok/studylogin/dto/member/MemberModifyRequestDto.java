@@ -5,7 +5,7 @@ import lombok.*;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class MemberModifyRequest {
+public class MemberModifyRequestDto {
 
     private String password;
 
