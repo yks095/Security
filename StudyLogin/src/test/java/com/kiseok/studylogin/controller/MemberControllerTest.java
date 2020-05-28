@@ -30,9 +30,6 @@ class MemberControllerTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
     private ObjectMapper objectMapper;
 
     @Autowired
