@@ -7,7 +7,8 @@ import com.kiseok.studylogin.dto.member.MemberResponseDto;
 import com.kiseok.studylogin.repository.MemberRepository;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import java.util.stream.Stream;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -40,6 +42,24 @@ class MemberControllerTest {
     @BeforeEach
     void setup()    {
         this.memberRepository.deleteAll();
+    }
+
+    @DisplayName("유저 생성 시 Email 검증 -> 400 BAD_REQUEST")
+    @ParameterizedTest(name = "{index} {displayName} message={0}")
+    @MethodSource("validMemberSave")
+    void save_member_400(String email, String password) throws Exception {
+        MemberRequestDto request = MemberRequestDto.builder()
+                .email(email)
+                .password(password)
+                .build();
+
+        this.mockMvc.perform(post(MEMBER_URI)
+                .accept(MediaTypes.HAL_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+        ;
     }
 
     @Test
@@ -101,6 +121,35 @@ class MemberControllerTest {
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("email").value(getMemberRequestDto().getEmail()))
+        ;
+    }
+
+    @DisplayName("유저 수정 시 Email 검증 -> 400 BAD_REQUEST")
+    @ParameterizedTest(name = "{index} {displayName} message={0}")
+    @MethodSource("validMemberModify")
+    void modify_member_400(String password) throws Exception {
+        ResultActions actions = this.mockMvc.perform(post(MEMBER_URI)
+                .accept(MediaTypes.HAL_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(getMemberRequestDto())))
+                .andDo(print())
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("email").value(getMemberRequestDto().getEmail()))
+        ;
+
+        String contentAsString = actions.andReturn().getResponse().getContentAsString();
+        MemberResponseDto response = objectMapper.readValue(contentAsString, MemberResponseDto.class);
+
+        MemberModifyRequestDto request = MemberModifyRequestDto.builder()
+                .password(password)
+                .build();
+
+        this.mockMvc.perform(put(MEMBER_URI + "/" + response.getId())
+                .accept(MediaTypes.HAL_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
         ;
     }
 
@@ -192,7 +241,7 @@ class MemberControllerTest {
     private MemberRequestDto getMemberRequestDto() {
         return MemberRequestDto.builder()
                 .email("test@email.com")
-                .password("testPW")
+                .password("testPW123!")
                 .build();
     }
 
@@ -202,4 +251,28 @@ class MemberControllerTest {
                 .build();
     }
 
+    private static Stream<Arguments> validMemberSave()  {
+        return Stream.of(
+                Arguments.of("", "", true),
+                Arguments.of(" ", " ", true),
+                Arguments.of("", "password123!", true),
+                Arguments.of(" ", "password123!", true),
+                Arguments.of("email", "password123!", true),
+                Arguments.of("email@", "password123!", true),
+                Arguments.of("email@email.", "password123!", true),
+                Arguments.of("email@email.com", "", true),
+                Arguments.of("email@email.com", " ", true),
+                Arguments.of("email@email.com", "pass", true),
+                Arguments.of("email@email.com", "passwordpasswordpassword", true)
+        );
+    }
+
+    private static Stream<Arguments> validMemberModify()  {
+        return Stream.of(
+                Arguments.of("", true),
+                Arguments.of(" ", true),
+                Arguments.of("pass", true),
+                Arguments.of("passwordpasswordpassword", true)
+        );
+    }
 }

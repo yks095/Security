@@ -5,8 +5,12 @@ import com.kiseok.studylogin.dto.member.MemberRequestDto;
 import com.kiseok.studylogin.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.hateoas.MediaTypes;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
 
 @RestController
 @RequiredArgsConstructor
@@ -21,12 +25,18 @@ public class MemberController {
     }
 
     @PostMapping
-    ResponseEntity<?> saveMember(@RequestBody MemberRequestDto requestDto)    {
+    ResponseEntity<?> saveMember(@RequestBody @Valid MemberRequestDto requestDto, Errors errors)    {
+        if(errors.hasErrors())  {
+            return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+        }
         return memberService.saveMember(requestDto);
     }
 
     @PutMapping("/{id}")
-    ResponseEntity<?> modifyMember(@PathVariable Long id, @RequestBody MemberModifyRequestDto request) {
+    ResponseEntity<?> modifyMember(@PathVariable Long id, @RequestBody MemberModifyRequestDto request, Errors errors) {
+        if(errors.hasErrors())  {
+            return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+        }
         return memberService.modifyMember(id, request);
     }
 
