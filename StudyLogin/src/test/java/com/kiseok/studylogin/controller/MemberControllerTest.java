@@ -39,7 +39,7 @@ class MemberControllerTest {
 
     private final String MEMBER_URI = "/api/members";
 
-    @BeforeEach
+    @AfterEach
     void setup()    {
         this.memberRepository.deleteAll();
     }
@@ -52,6 +52,34 @@ class MemberControllerTest {
                 .email(email)
                 .password(password)
                 .build();
+
+        this.mockMvc.perform(post(MEMBER_URI)
+                .accept(MediaTypes.HAL_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+        ;
+    }
+
+    @Test
+    @DisplayName("이메일 중복된 유저 생성 -> 400 BAD_REQUEST")
+    void save_member_duplicated_400() throws Exception   {
+        MemberRequestDto request = MemberRequestDto.builder()
+                .email("kiseok@email.com")
+                .password("kiseokPW")
+                .build();
+
+        this.mockMvc.perform(post(MEMBER_URI)
+                .accept(MediaTypes.HAL_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andDo(print())
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("email").value(request.getEmail()))
+        ;
+
+        request.setPassword("duplicatedPW");
 
         this.mockMvc.perform(post(MEMBER_URI)
                 .accept(MediaTypes.HAL_JSON)
