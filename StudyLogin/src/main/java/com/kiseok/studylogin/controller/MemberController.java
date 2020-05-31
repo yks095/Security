@@ -33,7 +33,7 @@ public class MemberController {
     }
 
     @PutMapping("/{id}")
-    ResponseEntity<?> modifyMember(@PathVariable Long id, @RequestBody MemberModifyRequestDto request, Errors errors) {
+    ResponseEntity<?> modifyMember(@PathVariable Long id, @RequestBody @Valid MemberModifyRequestDto request, Errors errors) {
         if(errors.hasErrors())  {
             return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
         }
