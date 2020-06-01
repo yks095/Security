@@ -1,6 +1,8 @@
 package com.kiseok.studylogin.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kiseok.studylogin.config.jwt.JwtProvider;
+import com.kiseok.studylogin.dto.LoginRequestDto;
 import com.kiseok.studylogin.dto.member.MemberModifyRequestDto;
 import com.kiseok.studylogin.dto.member.MemberRequestDto;
 import com.kiseok.studylogin.dto.member.MemberResponseDto;
@@ -9,10 +11,12 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.*;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.hateoas.MediaTypes;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,9 +39,15 @@ class MemberControllerTest {
     private ObjectMapper objectMapper;
 
     @Autowired
+    private ModelMapper modelMapper;
+
+    @Autowired
+    private JwtProvider jwtProvider;
+
+    @Autowired
     private MemberRepository memberRepository;
 
-    private final String MEMBER_URI = "/api/members";
+    private final String MEMBER_URL = "/api/members";
 
     @AfterEach
     void setup()    {
@@ -53,7 +63,7 @@ class MemberControllerTest {
                 .password(password)
                 .build();
 
-        this.mockMvc.perform(post(MEMBER_URI)
+        this.mockMvc.perform(post(MEMBER_URL)
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -70,7 +80,7 @@ class MemberControllerTest {
                 .password("kiseokPW")
                 .build();
 
-        this.mockMvc.perform(post(MEMBER_URI)
+        this.mockMvc.perform(post(MEMBER_URL)
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -81,7 +91,7 @@ class MemberControllerTest {
 
         request.setPassword("duplicatedPW");
 
-        this.mockMvc.perform(post(MEMBER_URI)
+        this.mockMvc.perform(post(MEMBER_URL)
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -98,7 +108,7 @@ class MemberControllerTest {
                 .password("kiseokPW")
                 .build();
 
-        this.mockMvc.perform(post(MEMBER_URI)
+        this.mockMvc.perform(post(MEMBER_URL)
             .accept(MediaTypes.HAL_JSON)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
@@ -111,41 +121,49 @@ class MemberControllerTest {
     @Test
     @DisplayName("DB에 없는 유저 불러오기 -> 404 NOT FOUND")
     void load_member_404() throws Exception {
-        this.mockMvc.perform(post(MEMBER_URI)
+        MemberRequestDto request = getMemberRequestDto();
+
+        this.mockMvc.perform(post(MEMBER_URL)
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(getMemberRequestDto())))
+                .content(objectMapper.writeValueAsString(request)))
                 .andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("email").value(getMemberRequestDto().getEmail()))
         ;
 
-        this.mockMvc.perform(get(MEMBER_URI + "/-1")
-            .accept(MediaTypes.HAL_JSON)
-            .contentType(MediaType.APPLICATION_JSON))
+        String token = getToken(request);
+
+        this.mockMvc.perform(get(MEMBER_URL + "/-1")
+                .accept(MediaTypes.HAL_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, token))
                 .andDo(print())
                 .andExpect(status().isNotFound())
         ;
     }
 
-
     @Test
     @DisplayName("정상적으로 유저 불러오기")
     void load_member_200() throws Exception {
-        ResultActions actions = this.mockMvc.perform(post(MEMBER_URI)
+        MemberRequestDto memberRequest = getMemberRequestDto();
+
+        ResultActions actions = this.mockMvc.perform(post(MEMBER_URL)
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(getMemberRequestDto())))
+                .content(objectMapper.writeValueAsString(memberRequest)))
                 .andDo(print())
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("email").value(getMemberRequestDto().getEmail()));
+                .andExpect(jsonPath("email").value(memberRequest.getEmail()));
 
         String contentAsString = actions.andReturn().getResponse().getContentAsString();
         MemberResponseDto response = objectMapper.readValue(contentAsString, MemberResponseDto.class);
+        String token = getToken(memberRequest);
 
-        this.mockMvc.perform(get(MEMBER_URI + "/" + response.getId())
+        this.mockMvc.perform(get(MEMBER_URL + "/" + response.getId())
                 .accept(MediaTypes.HAL_JSON)
-                .contentType(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, token))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("email").value(getMemberRequestDto().getEmail()))
@@ -156,26 +174,30 @@ class MemberControllerTest {
     @ParameterizedTest(name = "{index} {displayName} message={0}")
     @MethodSource("validMemberModify")
     void modify_member_400(String password) throws Exception {
-        ResultActions actions = this.mockMvc.perform(post(MEMBER_URI)
+        MemberRequestDto memberRequest = getMemberRequestDto();
+
+        ResultActions actions = this.mockMvc.perform(post(MEMBER_URL)
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(getMemberRequestDto())))
+                .content(objectMapper.writeValueAsString(memberRequest)))
                 .andDo(print())
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("email").value(getMemberRequestDto().getEmail()))
+                .andExpect(jsonPath("email").value(memberRequest.getEmail()))
         ;
 
         String contentAsString = actions.andReturn().getResponse().getContentAsString();
         MemberResponseDto response = objectMapper.readValue(contentAsString, MemberResponseDto.class);
+        String token = getToken(memberRequest);
 
         MemberModifyRequestDto request = MemberModifyRequestDto.builder()
                 .password(password)
                 .build();
 
-        this.mockMvc.perform(put(MEMBER_URI + "/" + response.getId())
+        this.mockMvc.perform(put(MEMBER_URL + "/" + response.getId())
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                .content(objectMapper.writeValueAsString(request))
+                .header(HttpHeaders.AUTHORIZATION, token))
                 .andDo(print())
                 .andExpect(status().isBadRequest())
         ;
@@ -184,19 +206,24 @@ class MemberControllerTest {
     @Test
     @DisplayName("DB에 없는 유저 수정하기 -> 404 NOT FOUND")
     void modify_member_404() throws Exception {
-        this.mockMvc.perform(post(MEMBER_URI)
+        MemberRequestDto memberRequest = getMemberRequestDto();
+
+        this.mockMvc.perform(post(MEMBER_URL)
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(getMemberRequestDto())))
+                .content(objectMapper.writeValueAsString(memberRequest)))
                 .andDo(print())
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("email").value(getMemberRequestDto().getEmail()))
+                .andExpect(jsonPath("email").value(memberRequest.getEmail()))
         ;
 
-        this.mockMvc.perform(put(MEMBER_URI + "/-1")
+        String token = getToken(memberRequest);
+
+        this.mockMvc.perform(put(MEMBER_URL + "/-1")
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(getAnotherMemberRequestDto())))
+                .content(objectMapper.writeValueAsString(getAnotherMemberRequestDto()))
+                .header(HttpHeaders.AUTHORIZATION, token))
                 .andDo(print())
                 .andExpect(status().isNotFound())
         ;
@@ -205,21 +232,25 @@ class MemberControllerTest {
     @Test
     @DisplayName("정상적으로 유저 수정하기")
     void modify_member_200() throws Exception {
-        ResultActions actions = this.mockMvc.perform(post(MEMBER_URI)
+        MemberRequestDto memberRequest = getMemberRequestDto();
+
+        ResultActions actions = this.mockMvc.perform(post(MEMBER_URL)
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(getMemberRequestDto())))
+                .content(objectMapper.writeValueAsString(memberRequest)))
                 .andDo(print())
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("email").value(getMemberRequestDto().getEmail()));
+                .andExpect(jsonPath("email").value(memberRequest.getEmail()));
 
         String contentAsString = actions.andReturn().getResponse().getContentAsString();
         MemberResponseDto response = objectMapper.readValue(contentAsString, MemberResponseDto.class);
+        String token = getToken(memberRequest);
 
-        this.mockMvc.perform(put(MEMBER_URI + "/" + response.getId())
+        this.mockMvc.perform(put(MEMBER_URL + "/" + response.getId())
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(getAnotherMemberRequestDto())))
+                .content(objectMapper.writeValueAsString(getAnotherMemberRequestDto()))
+                .header(HttpHeaders.AUTHORIZATION, token))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("email").value(getMemberRequestDto().getEmail()))
@@ -229,16 +260,21 @@ class MemberControllerTest {
     @Test
     @DisplayName("DB에 없는 유저 삭제하기 -> 404 NOT FOUND")
     void remove_member_404() throws Exception   {
-        this.mockMvc.perform(post(MEMBER_URI)
+        MemberRequestDto memberRequest = getMemberRequestDto();
+
+        this.mockMvc.perform(post(MEMBER_URL)
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(getMemberRequestDto())))
                 .andDo(print())
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("email").value(getMemberRequestDto().getEmail()))
+                .andExpect(jsonPath("email").value(memberRequest.getEmail()))
         ;
 
-        this.mockMvc.perform(delete(MEMBER_URI + "/-1"))
+        String token = getToken(memberRequest);
+
+        this.mockMvc.perform(delete(MEMBER_URL + "/-1")
+                .header(HttpHeaders.AUTHORIZATION, token))
                 .andDo(print())
                 .andExpect(status().isNotFound())
         ;
@@ -247,24 +283,26 @@ class MemberControllerTest {
     @Test
     @DisplayName("정상적으로 유저 삭제하기")
     void remove_member_200() throws Exception   {
-        ResultActions actions = this.mockMvc.perform(post(MEMBER_URI)
+        MemberRequestDto memberRequest = getMemberRequestDto();
+
+        ResultActions actions = this.mockMvc.perform(post(MEMBER_URL)
                 .accept(MediaTypes.HAL_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(getMemberRequestDto())))
+                .content(objectMapper.writeValueAsString(memberRequest)))
                 .andDo(print())
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("email").value(getMemberRequestDto().getEmail()));
+                .andExpect(jsonPath("email").value(memberRequest.getEmail()));
 
         String contentAsString = actions.andReturn().getResponse().getContentAsString();
         MemberResponseDto response = objectMapper.readValue(contentAsString, MemberResponseDto.class);
+        String token = getToken(memberRequest);
 
-        this.mockMvc.perform(delete(MEMBER_URI + "/" + response.getId()))
+        this.mockMvc.perform(delete(MEMBER_URL + "/" + response.getId())
+                .header(HttpHeaders.AUTHORIZATION, token))
                 .andDo(print())
                 .andExpect(status().isOk())
         ;
     }
-
-
 
     private MemberRequestDto getMemberRequestDto() {
         return MemberRequestDto.builder()
@@ -277,6 +315,11 @@ class MemberControllerTest {
         return MemberModifyRequestDto.builder()
                 .password("testAnotherPW")
                 .build();
+    }
+
+    private String getToken(MemberRequestDto memberRequest) {
+        LoginRequestDto loginRequest = modelMapper.map(memberRequest, LoginRequestDto.class);
+        return "Bearer " + jwtProvider.generateToken(loginRequest.toEntity());
     }
 
     private static Stream<Arguments> validMemberSave()  {
