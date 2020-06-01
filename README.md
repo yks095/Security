@@ -11,7 +11,7 @@
 ## 개발환경
 |도구|버전|
 |:---:|:---:|
-|Spring|Spring Boot 2.3.0|
+|Spring|Spring Boot 2.2.2|
 |운영체제|Mac OS X|
 |개발 툴|IntelliJ IDEA Ultimate|
 |JDK|JDK 8(>=8)|
