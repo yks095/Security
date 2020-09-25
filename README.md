@@ -3,9 +3,10 @@
 
 ## 학습 목표
 - `Spring Security`의 이해
-- `Spring Security`를 사용한 로그인 구현
-- `Spring OAuth2`를 사용한 소셜 로그인 구현
-- `JWT`를 사용한 로그인 구현
+- `Spring Session` 기반의 로그인 구현
+- `JWT` 기반의 로그인 구현
+- `Spring OAuth2` 기반의 소셜 로그인 구현
+
 
 
 ## 개발환경
